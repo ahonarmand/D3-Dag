@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import * as d3 from "d3";
-import { tickStep } from 'd3';
+import _ from "lodash"
 
 interface InputDagNode {
   id: string
@@ -199,6 +199,11 @@ class NodesPositioning {
   getNodesWithPositions(): DagNode[] {
     return this.nodesWithPositions
   }
+
+  getEdgesAsNodePairs(edges: InputEdge[]): [DagNode, DagNode][] {
+    const idToDagNode = _.keyBy(this.nodesWithPositions, x => x.id)
+    return edges.map(({sourceId, targetId}) => [idToDagNode[sourceId], idToDagNode[targetId]])
+  }
 }
 
 
@@ -208,6 +213,7 @@ function D3Dag({height, width, nodes, edges}: D3DagProps) {
 
   const nodePositions = new NodesPositioning(layers, height, width)
   const nodesWithPositions = nodePositions.getNodesWithPositions()
+  const edgesAsNodePairs = nodePositions.getEdgesAsNodePairs(edges)
 
   console.log(`nodes with positions:`);
   console.log(nodesWithPositions)
@@ -260,15 +266,15 @@ function D3Dag({height, width, nodes, edges}: D3DagProps) {
         toggleClicked(x.id)
      })
 
-    //  vis.selectAll(".line")
-    //   .data(edges)
-    //   .enter()
-    //   .append("line")
-    //   .attr("x1", function(d) { return Number(d.sourceId)*2 })
-    //   .attr("y1", function(d) { return Number(d.sourceId)*2 })
-    //   .attr("x2", function(d) { return Number(d.targetId)*2 })
-    //   .attr("y2", function(d) { return Number(d.targetId)*2 })
-    //   .style("stroke", "black");
+     vis.selectAll(".line")
+      .data(edgesAsNodePairs)
+      .enter()
+      .append("line")
+      .attr("x1", function(e) { return e[0].x })
+      .attr("y1", function(e) { return e[0].y })
+      .attr("x2", function(e) { return e[1].x })
+      .attr("y2", function(e) { return e[1].y })
+      .style("stroke", "black");
 
   });
 
