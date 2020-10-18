@@ -16,8 +16,8 @@ interface DagNode {
   id: string
   displayName: string
   layerNumber: number
-  // x: number
-  // y: number
+  x: number
+  y: number
 }
 
 interface Edge {
@@ -155,7 +155,6 @@ function _topologicalSort(nodes: InputDagNode[], edges: InputEdge[]): Map<number
     const adjacencyList = new AdjacencyList(nodes, edges)
     const inDegrees = new InDegrees(nodes, adjacencyList)
 
-    
     const layers = inDegrees.getLayers()
     
     for(const [layer, nodes] of layers){
@@ -166,11 +165,52 @@ function _topologicalSort(nodes: InputDagNode[], edges: InputEdge[]): Map<number
     return layers
 }
 
+class NodesPositioning {
+  layers: Map<number, InputDagNode[]>
+  nodesWithPositions: DagNode[] = []
+  height: number
+  width: number
+
+  constructor(layers: Map<number, InputDagNode[]>, height: number, width: number) {
+    this.layers = layers
+    this.height = height
+    this.width = width
+    this.assignPositionToNodes()
+  }
+
+  assignPositionToNodes(){
+    const layerDistance = this.width / (this.layers.size + 1)
+    
+    for(const [layer, nodes] of this.layers){
+      const distanceToNodesInLayer = this.height / (nodes.length + 1)
+      for(let i=0 ; i<nodes.length ; i++) {
+        const node = nodes[i]
+        this.nodesWithPositions.push({
+          id: node.id,
+          displayName: node.displayName,
+          layerNumber: layer,
+          x: layerDistance * (layer+1),
+          y: distanceToNodesInLayer * (i+1)
+        })
+      }
+    }
+  }
+
+  getNodesWithPositions(): DagNode[] {
+    return this.nodesWithPositions
+  }
+}
+
 
 function D3Dag({height, width, nodes, edges}: D3DagProps) {
 
-  _topologicalSort(nodes, edges)
+  const layers: Map<number, InputDagNode[]> = _topologicalSort(nodes, edges)
 
+  const nodePositions = new NodesPositioning(layers, height, width)
+  const nodesWithPositions = nodePositions.getNodesWithPositions()
+
+  console.log(`nodes with positions:`);
+  console.log(nodesWithPositions)
 
   const myRef = React.createRef<HTMLDivElement>();
   const graphRef = React.createRef<HTMLDivElement>();
@@ -206,12 +246,12 @@ function D3Dag({height, width, nodes, edges}: D3DagProps) {
       .style("background-color", "pink")
     vis.text("The Graph").select("#graph")
     vis.selectAll("circle .nodes")
-     .data(nodes)
+     .data(nodesWithPositions)
      .enter()
      .append("svg:circle")
      .attr("class", "nodes")
-     .attr("cx", function(d) { return Number(d.id)*2; })
-     .attr("cy", function(d) { return Number(d.id)*2; })
+     .attr("cx", function(node) { return node.x; })
+     .attr("cy", function(node) { return node.y; })
      .attr("r", "10px")
      .style("fill", "black")
      .on("click", (element, datum) => {
@@ -220,15 +260,15 @@ function D3Dag({height, width, nodes, edges}: D3DagProps) {
         toggleClicked(x.id)
      })
 
-     vis.selectAll(".line")
-      .data(edges)
-      .enter()
-      .append("line")
-      .attr("x1", function(d) { return Number(d.sourceId)*2 })
-      .attr("y1", function(d) { return Number(d.sourceId)*2 })
-      .attr("x2", function(d) { return Number(d.targetId)*2 })
-      .attr("y2", function(d) { return Number(d.targetId)*2 })
-      .style("stroke", "black");
+    //  vis.selectAll(".line")
+    //   .data(edges)
+    //   .enter()
+    //   .append("line")
+    //   .attr("x1", function(d) { return Number(d.sourceId)*2 })
+    //   .attr("y1", function(d) { return Number(d.sourceId)*2 })
+    //   .attr("x2", function(d) { return Number(d.targetId)*2 })
+    //   .attr("y2", function(d) { return Number(d.targetId)*2 })
+    //   .style("stroke", "black");
 
   });
 
