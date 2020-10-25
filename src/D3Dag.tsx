@@ -20,9 +20,15 @@ interface DagNode {
   y: number
 }
 
-interface Edge {
-  sourceNode: DagNode
-  targetNode: DagNode
+class Edge {
+  constructor(
+    public sourceNode: DagNode,
+    public targetNode: DagNode
+  ){}
+
+  getEdgeId(){
+    return `edgeId_${this.sourceNode.id}_${this.targetNode.id}`
+  }
 }
 
 interface D3DagProps {
@@ -200,9 +206,9 @@ class NodesPositioning {
     return this.nodesWithPositions
   }
 
-  getEdgesAsNodePairs(edges: InputEdge[]): [DagNode, DagNode][] {
+  getEdgesAsNodePairs(edges: InputEdge[]): Edge[] {
     const idToDagNode = _.keyBy(this.nodesWithPositions, x => x.id)
-    return edges.map(({sourceId, targetId}) => [idToDagNode[sourceId], idToDagNode[targetId]])
+    return edges.map(({sourceId, targetId}) => new Edge(idToDagNode[sourceId], idToDagNode[targetId]))
   }
 }
 
@@ -260,21 +266,42 @@ function D3Dag({height, width, nodes, edges}: D3DagProps) {
      .attr("cy", function(node) { return node.y; })
      .attr("r", "10px")
      .style("fill", "black")
+     .style("opacity", 0.5)
      .on("click", (element, datum) => {
        const x = datum as unknown as InputDagNode
         console.log(x)
         toggleClicked(x.id)
      })
 
+     vis.selectAll("marker")
+      .data(edgesAsNodePairs)
+      .enter()
+      .append("svg:marker")
+      .attr('id', function(d){ return `marker_${d.getEdgeId()}`})
+      .attr('markerHeight', 13)
+      .attr('markerWidth', 13)
+      .attr('markerUnits', 'strokeWidth')
+      .attr('orient', 'auto')
+      .attr('refX', 2)
+      .attr('refY', 6)
+      .append('svg:path')
+        .attr('d', function(d){ return "M2,4 L2,8 L5,6 Z" })
+        .attr('fill', function(d,i) { return "black"});
+
+
      vis.selectAll(".line")
       .data(edgesAsNodePairs)
       .enter()
       .append("line")
-      .attr("x1", function(e) { return e[0].x })
-      .attr("y1", function(e) { return e[0].y })
-      .attr("x2", function(e) { return e[1].x })
-      .attr("y2", function(e) { return e[1].y })
+      .attr("x1", function(e) { return e.sourceNode.x })
+      .attr("y1", function(e) { return e.sourceNode.y })
+      .attr("x2", function(e) { return e.targetNode.x })
+      .attr("y2", function(e) { return e.targetNode.y })
+      .attr('stroke-width', 3)
+      .attr('stroke-linecap', 'round')
+      .attr('marker-end', function(d,i){ return `url(#marker_${d.getEdgeId()})` })
       .style("stroke", "black");
+
 
   });
 
