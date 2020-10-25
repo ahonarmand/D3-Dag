@@ -34,7 +34,7 @@ class Edge {
   }
 
   getEndCoordinates(markerLength: number = 3) {
-    markerLength = 3
+    // refer to documentation/calculate_line_target_x_y.jpg for documentation
     const x1 = this.sourceNode.outgoing_x
     const y1 = this.sourceNode.outgoing_y
     const x2 = this.targetNode.incoming_x
@@ -344,7 +344,7 @@ function D3Dag({height, width, nodes, edges}: D3DagProps) {
       .attr('refX', 2)
       .attr('refY', 6)
       .append('svg:path')
-        .attr('d', function(d){ return "M2,4 L2,8 L5,6 Z" })
+        .attr('d', function(d){ return "M2,4 L2,8 L5,6 Z" })    //the arrow head is pointing to the right. This path defines the triangle making the arrow. Arrow head length = 5-3=2
         .attr('fill', function(d,i) { return "black"});
 
 
