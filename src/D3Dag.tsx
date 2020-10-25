@@ -18,6 +18,7 @@ interface DagNode {
   layerNumber: number
   x: number
   y: number
+  scale?: number
 }
 
 class Edge {
@@ -256,17 +257,40 @@ function D3Dag({height, width, nodes, edges}: D3DagProps) {
     const vis = d3.select("#graph").append("svg:svg")
     vis.attr("width", width).attr("height", height)
       .style("background-color", "pink")
-    vis.text("The Graph").select("#graph")
-    vis.selectAll("circle .nodes")
+
+    const rectHeight = 20
+    const rectWidth = 40
+
+    const rectText = vis.selectAll("g .nodes")
      .data(nodesWithPositions)
      .enter()
-     .append("svg:circle")
+     .append('g')
+     .attr("transform", `translate(3, ${-1 * rectHeight/2})`)
+
+    rectText
+      .append('rect')
+      .attr("x", n => n.x)
+      .attr("y", n => n.y)
+      .attr("width", 40)
+      .attr("height", 20)
+      .style("fill", "blue")
+      .style("opacity", 0.3)
+
+    rectText
+     .append("text")
+     .text(d => d.displayName)
      .attr("class", "nodes")
-     .attr("cx", function(node) { return node.x; })
-     .attr("cy", function(node) { return node.y; })
-     .attr("r", "10px")
+     .attr("x", function(node) { return node.x; })
+     .attr("y", function(node) { return node.y; })
+     .attr("transform", `translate(3, ${rectHeight/1.5})`)
+     .each( function(x: DagNode) {
+       x.scale = Math.min(rectWidth / this.getBBox().width, rectHeight / this.getBBox().height)
+     })
+     .style("font-size", d => {
+       console.log(`s.scale: ${d.scale}`);
+       return d.scale ? d.scale*13 + "px" : 13
+      })
      .style("fill", "black")
-     .style("opacity", 0.5)
      .on("click", (element, datum) => {
        const x = datum as unknown as InputDagNode
         console.log(x)
@@ -281,7 +305,7 @@ function D3Dag({height, width, nodes, edges}: D3DagProps) {
       .attr('markerHeight', 13)
       .attr('markerWidth', 13)
       .attr('markerUnits', 'strokeWidth')
-      .attr('orient', 'auto')
+      .attr('orient', 'auto')   // this will make sure that the marker autorotates based on the line referencing it
       .attr('refX', 2)
       .attr('refY', 6)
       .append('svg:path')
@@ -297,7 +321,7 @@ function D3Dag({height, width, nodes, edges}: D3DagProps) {
       .attr("y1", function(e) { return e.sourceNode.y })
       .attr("x2", function(e) { return e.targetNode.x })
       .attr("y2", function(e) { return e.targetNode.y })
-      .attr('stroke-width', 3)
+      .attr('stroke-width', 1.5)
       .attr('stroke-linecap', 'round')
       .attr('marker-end', function(d,i){ return `url(#marker_${d.getEdgeId()})` })
       .style("stroke", "black");

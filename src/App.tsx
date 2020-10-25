@@ -4,12 +4,12 @@ import './App.css';
 import D3Dag from './D3Dag';
 
 const nodes = [
-  {id: '10', displayName: '10'},
-  {id: '20', displayName: '20'},
-  {id: '30', displayName: '30'},
-  {id: '40', displayName: '40'},
-  {id: '50', displayName: '50'},
-  {id: '60', displayName: '60'},
+  {id: '10', displayName: 'ten'},
+  {id: '20', displayName: 'twenty'},
+  {id: '30', displayName: 'thirty'},
+  {id: '40', displayName: 'forth'},
+  {id: '50', displayName: 'fifty'},
+  {id: '65', displayName: 'sixty five'},
 ]
 
 const edges = [
@@ -17,8 +17,8 @@ const edges = [
   {sourceId: '10', targetId: '30'},
   {sourceId: '30', targetId: '40'},
   {sourceId: '30', targetId: '50'},
-  {sourceId: '10', targetId: '60'},
-  {sourceId: '30', targetId: '60'},
+  {sourceId: '10', targetId: '65'},
+  {sourceId: '30', targetId: '65'},
 ]
 
 
