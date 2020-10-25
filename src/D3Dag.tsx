@@ -16,8 +16,10 @@ interface DagNode {
   id: string
   displayName: string
   layerNumber: number
-  x: number
-  y: number
+  incoming_x: number
+  incoming_y: number
+  outgoing_x: number
+  outgoing_y: number
   scale?: number
 }
 
@@ -29,6 +31,39 @@ class Edge {
 
   getEdgeId(){
     return `edgeId_${this.sourceNode.id}_${this.targetNode.id}`
+  }
+
+  getEndCoordinates(markerLength: number = 3) {
+    markerLength = 3
+    const x1 = this.sourceNode.outgoing_x
+    const y1 = this.sourceNode.outgoing_y
+    const x2 = this.targetNode.incoming_x
+    const y2 = this.targetNode.incoming_y
+
+    const L = Math.sqrt((y2 - y1)**2 + (x2 - x1)**2)
+
+    const m = (y2 - y1) / (x2 - x1)
+
+    const a = 1 + (1/m)**2
+    const b = -1*(2*y1/(m**2)) - 2*y1
+    const c = (y1**2) + ((y1**2)/(m**2)) - (L - markerLength)**2
+
+    const y_option1 = (-b + Math.sqrt(b**2 - 4*a*c)) / (2*a)
+    const y_option2 = (-b - Math.sqrt(b**2 - 4*a*c)) / (2*a)
+
+    const x_option1 = x1 + (y_option1-y1)/m
+    const x_option2 = x1 + (y_option2-y1)/m
+
+    const distToPoint1 = (x: number, y: number) => Math.sqrt((x-x1)**2 + (y-y1)**2)
+    const distToPoint2 = (x: number, y: number) => Math.sqrt((x-x2)**2 + (y-y2)**2)
+
+    const option1_sum_dist = distToPoint1(x_option1, y_option1) + distToPoint2(x_option1, y_option1)
+    const option2_sum_dist = distToPoint1(x_option2, y_option2) + distToPoint2(x_option2, y_option2)
+
+    if(Math.abs(option1_sum_dist) < Math.abs(option2_sum_dist)){
+      return [x_option1, y_option1]
+    }
+    return [x_option2, y_option2]
   }
 }
 
@@ -163,12 +198,6 @@ function _topologicalSort(nodes: InputDagNode[], edges: InputEdge[]): Map<number
     const inDegrees = new InDegrees(nodes, adjacencyList)
 
     const layers = inDegrees.getLayers()
-    
-    for(const [layer, nodes] of layers){
-      console.log(layer)
-      console.log(nodes)
-      console.log("---")
-    }
     return layers
 }
 
@@ -178,7 +207,12 @@ class NodesPositioning {
   height: number
   width: number
 
-  constructor(layers: Map<number, InputDagNode[]>, height: number, width: number) {
+  constructor(
+    layers: Map<number, InputDagNode[]>,
+    height: number,
+    width: number,
+    private rect_width: number
+  ) {
     this.layers = layers
     this.height = height
     this.width = width
@@ -196,8 +230,10 @@ class NodesPositioning {
           id: node.id,
           displayName: node.displayName,
           layerNumber: layer,
-          x: layerDistance * (layer+1),
-          y: distanceToNodesInLayer * (i+1)
+          incoming_x: layerDistance * (layer+1),
+          incoming_y: distanceToNodesInLayer * (i+1),
+          outgoing_x: layerDistance * (layer+1) + this.rect_width,
+          outgoing_y: distanceToNodesInLayer * (i+1)
         })
       }
     }
@@ -215,10 +251,12 @@ class NodesPositioning {
 
 
 function D3Dag({height, width, nodes, edges}: D3DagProps) {
+  const RECT_HEIGHT = 20
+  const RECT_WIDTH = 40
 
   const layers: Map<number, InputDagNode[]> = _topologicalSort(nodes, edges)
 
-  const nodePositions = new NodesPositioning(layers, height, width)
+  const nodePositions = new NodesPositioning(layers, height, width, RECT_WIDTH)
   const nodesWithPositions = nodePositions.getNodesWithPositions()
   const edgesAsNodePairs = nodePositions.getEdgesAsNodePairs(edges)
 
@@ -258,19 +296,16 @@ function D3Dag({height, width, nodes, edges}: D3DagProps) {
     vis.attr("width", width).attr("height", height)
       .style("background-color", "pink")
 
-    const rectHeight = 20
-    const rectWidth = 40
-
     const rectText = vis.selectAll("g .nodes")
      .data(nodesWithPositions)
      .enter()
      .append('g')
-     .attr("transform", `translate(3, ${-1 * rectHeight/2})`)
+     .attr("transform", `translate(0, ${-1 * RECT_HEIGHT/2})`)
 
     rectText
       .append('rect')
-      .attr("x", n => n.x)
-      .attr("y", n => n.y)
+      .attr("x", n => n.incoming_x)
+      .attr("y", n => n.incoming_y)
       .attr("width", 40)
       .attr("height", 20)
       .style("fill", "blue")
@@ -280,11 +315,11 @@ function D3Dag({height, width, nodes, edges}: D3DagProps) {
      .append("text")
      .text(d => d.displayName)
      .attr("class", "nodes")
-     .attr("x", function(node) { return node.x; })
-     .attr("y", function(node) { return node.y; })
-     .attr("transform", `translate(3, ${rectHeight/1.5})`)
+     .attr("x", function(node) { return node.incoming_x; })
+     .attr("y", function(node) { return node.incoming_y; })
+     .attr("transform", `translate(0, ${RECT_HEIGHT/1.5})`)
      .each( function(x: DagNode) {
-       x.scale = Math.min(rectWidth / this.getBBox().width, rectHeight / this.getBBox().height)
+       x.scale = Math.min(RECT_WIDTH / this.getBBox().width, RECT_HEIGHT / this.getBBox().height)
      })
      .style("font-size", d => {
        console.log(`s.scale: ${d.scale}`);
@@ -317,10 +352,10 @@ function D3Dag({height, width, nodes, edges}: D3DagProps) {
       .data(edgesAsNodePairs)
       .enter()
       .append("line")
-      .attr("x1", function(e) { return e.sourceNode.x })
-      .attr("y1", function(e) { return e.sourceNode.y })
-      .attr("x2", function(e) { return e.targetNode.x })
-      .attr("y2", function(e) { return e.targetNode.y })
+      .attr("x1", function(e) { return e.sourceNode.outgoing_x })
+      .attr("y1", function(e) { return e.sourceNode.outgoing_y })
+      .attr("x2", function(e) { return e.getEndCoordinates()[0] })
+      .attr("y2", function(e) { return e.getEndCoordinates()[1] })
       .attr('stroke-width', 1.5)
       .attr('stroke-linecap', 'round')
       .attr('marker-end', function(d,i){ return `url(#marker_${d.getEdgeId()})` })
@@ -329,7 +364,6 @@ function D3Dag({height, width, nodes, edges}: D3DagProps) {
 
   });
 
-  console.log(`here 2`);
 
   return (
     <>
